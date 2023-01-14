@@ -76,26 +76,177 @@ func TestValidate(t *testing.T) {
 }
 
 func TestPreparing(t *testing.T) {
-	t.Run("testing preparing", func(t *testing.T) {
-		var stdin = Std{
+	t.Run("testing preparing without params", func(t *testing.T) {
+		var stdin = InputParams{
 			boolFlags: map[string]bool{},
 			intFlags:  map[string]uint{},
-			data:      []string{},
+			data: []string{
+				"I love music.",
+				"I love music.",
+				"I love music.",
+				"",
+				"I love music of Kartik.",
+				"I love music of Kartik.",
+				"Thanks.",
+				"I love music of Kartik.",
+				"I love music of Kartik.",
+			},
 		}
-		stdin.intFlags["f"], stdin.intFlags["s"], stdin.boolFlags["i"] = 1, 2, true
-		stdin.data = append(stdin.data,
-			" UI OP ui OP",
-			"UI OP ui OP",
-			"asd Fgh,!!! jkL",
-			"asd Fgh,!!! jkL",
-			"")
 
-		result := make([]El, 0)
-		result = append(result,
-			El{" UI OP ui OP", 1},
-			El{"UI OP ui OP", 1},
-			El{"asd Fgh,!!! jkL", 2},
-			El{"", 1})
+		result := []PreparedForOutput{
+			PreparedForOutput{"I love music.", 3},
+			PreparedForOutput{"", 1},
+			PreparedForOutput{"I love music of Kartik.", 2},
+			PreparedForOutput{"Thanks.", 1},
+			PreparedForOutput{"I love music of Kartik.", 2},
+		}
+
+		realResult := preparing(stdin)
+
+		if len(result) != len(realResult) {
+			t.Errorf("\nExpected\n    %v\nto equal\n    %v", result, realResult)
+		}
+
+		for ind, _ := range realResult {
+			if result[ind] != realResult[ind] {
+				t.Errorf("\nExpected\n    %v\nto equal\n    %v", result[ind], realResult[ind])
+			}
+		}
+	})
+	t.Run("testing preparing with i param", func(t *testing.T) {
+		var stdin = InputParams{
+			boolFlags: map[string]bool{
+				"i": true,
+			},
+			intFlags: map[string]uint{},
+			data: []string{
+				"I LOVE MUSIC.",
+				"I love music.",
+				"I LoVe MuSiC.",
+				"",
+				"I love MuSIC of Kartik.",
+				"I love music of kartik.",
+				"Thanks.",
+				"I love music of kartik.",
+				"I love MuSIC of Kartik.",
+			},
+		}
+
+		result := []PreparedForOutput{
+			PreparedForOutput{"I LOVE MUSIC.", 3},
+			PreparedForOutput{"", 1},
+			PreparedForOutput{"I love MuSIC of Kartik.", 2},
+			PreparedForOutput{"Thanks.", 1},
+			PreparedForOutput{"I love music of kartik.", 2},
+		}
+
+		realResult := preparing(stdin)
+
+		if len(result) != len(realResult) {
+			t.Errorf("\nExpected\n    %v\nto equal\n    %v", result, realResult)
+		}
+
+		for ind, _ := range realResult {
+			if result[ind] != realResult[ind] {
+				t.Errorf("\nExpected\n    %v\nto equal\n    %v", result[ind], realResult[ind])
+			}
+		}
+	})
+	t.Run("testing preparing with f param", func(t *testing.T) {
+		var stdin = InputParams{
+			boolFlags: map[string]bool{},
+			intFlags: map[string]uint{
+				"f": 1,
+			},
+			data: []string{
+				"We love music.",
+				"I love music.",
+				"They love music.",
+				"",
+				"I love music of Kartik.",
+				"We love music of Kartik.",
+				"Thanks.",
+			},
+		}
+
+		result := []PreparedForOutput{
+			PreparedForOutput{"We love music.", 3},
+			PreparedForOutput{"", 1},
+			PreparedForOutput{"I love music of Kartik.", 2},
+			PreparedForOutput{"Thanks.", 1},
+		}
+
+		realResult := preparing(stdin)
+
+		if len(result) != len(realResult) {
+			t.Errorf("\nExpected\n    %v\nto equal\n    %v", result, realResult)
+		}
+
+		for ind, _ := range realResult {
+			if result[ind] != realResult[ind] {
+				t.Errorf("\nExpected\n    %v\nto equal\n    %v", result[ind], realResult[ind])
+			}
+		}
+	})
+	t.Run("testing preparing with f param", func(t *testing.T) {
+		var stdin = InputParams{
+			boolFlags: map[string]bool{},
+			intFlags: map[string]uint{
+				"s": 1,
+			},
+			data: []string{
+				"I love music.",
+				"A love music.",
+				"C love music.",
+				"",
+				"I love music of Kartik.",
+				"We love music of Kartik.",
+				"Thanks.",
+			},
+		}
+
+		result := []PreparedForOutput{
+			PreparedForOutput{"I love music.", 3},
+			PreparedForOutput{"", 1},
+			PreparedForOutput{"I love music of Kartik.", 1},
+			PreparedForOutput{"We love music of Kartik.", 1},
+			PreparedForOutput{"Thanks.", 1},
+		}
+
+		realResult := preparing(stdin)
+
+		if len(result) != len(realResult) {
+			t.Errorf("\nExpected\n    %v\nto equal\n    %v", result, realResult)
+		}
+
+		for ind, _ := range realResult {
+			if result[ind] != realResult[ind] {
+				t.Errorf("\nExpected\n    %v\nto equal\n    %v", result[ind], realResult[ind])
+			}
+		}
+	})
+	t.Run("testing preparing with i, f, s params", func(t *testing.T) {
+		var stdin = InputParams{
+			boolFlags: map[string]bool{
+				"i": true,
+			},
+			intFlags: map[string]uint{
+				"f": 1,
+				"s": 2,
+			},
+			data: []string{" UI OP ui OP",
+				"UI OP ui OP",
+				"asd Fgh,!!! jkL",
+				"asd Fgh,!!! jkL",
+				""},
+		}
+
+		result := []PreparedForOutput{
+			PreparedForOutput{" UI OP ui OP", 1},
+			PreparedForOutput{"UI OP ui OP", 1},
+			PreparedForOutput{"asd Fgh,!!! jkL", 2},
+			PreparedForOutput{"", 1},
+		}
 
 		realResult := preparing(stdin)
 
@@ -110,20 +261,3 @@ func TestPreparing(t *testing.T) {
 		}
 	})
 }
-
-/*
-этот тест не получается, хз почему разные ссылки у двух переменных, ссылающихся на одну функцию
-*/
-
-//func TestProgramBehaviour(t *testing.T) {
-//	t.Run("testing prog behaviour with c param", func(t *testing.T) {
-//		boolFlags := map[string]bool{"c": true}
-//
-//		result := strWithNumOfRepeat
-//		realResult := programBehaviour(boolFlags)
-//
-//		if &result != &realResult {
-//			t.Errorf("\nExpected\n    %v\nto equal\n    %v", &result, &realResult)
-//		}
-//	})
-//}

@@ -5,12 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strconv"
 	"strings"
 )
 
-type Std struct {
+type InputParams struct {
 	boolFlags map[string]bool
 	intFlags  map[string]uint
 	data      []string
@@ -18,18 +19,32 @@ type Std struct {
 	output    string
 }
 
-type El struct {
+func (i InputParams) defineProgramBehavior() func([]PreparedForOutput) string {
+	f := unique
+	if ok, val := i.boolFlags["c"]; ok && val {
+		f = strWithNumOfRepeat
+	} else if ok, val = i.boolFlags["d"]; ok && val {
+		f = repeated
+	} else if ok, val = i.boolFlags["u"]; ok && val {
+		f = unrepeated
+	}
+
+	return f
+}
+
+type PreparedForOutput struct {
 	str string
 	num int
 }
 
-func getInput() (Std, bool) {
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Println("panic happend in getInput:", err)
-		}
-	}()
-
+func getInput() (InputParams, bool) {
+	/*
+		defer func() {
+			if err := recover(); err != nil {
+				fmt.Println("panic happend in getInput:", err)
+			}
+		}()
+	*/
 	c := flag.Bool("c", false, "counting the number of lines in the input")
 	d := flag.Bool("d", false, "output only those lines that are repeated in the input")
 	u := flag.Bool("u", false, "output only those lines that are not repeated in the input")
@@ -40,13 +55,19 @@ func getInput() (Std, bool) {
 
 	flag.Parse()
 
-	boolFlags := map[string]bool{}
-	boolFlags["c"], boolFlags["d"], boolFlags["u"], boolFlags["i"] = *c, *d, *u, *i
+	boolFlags := map[string]bool{
+		"c": *c,
+		"d": *d,
+		"u": *u,
+		"i": *i,
+	}
 
-	intFlags := map[string]uint{}
-	intFlags["f"], intFlags["s"] = *f, *s
+	intFlags := map[string]uint{
+		"f": *f,
+		"s": *s,
+	}
 
-	var stdin = Std{
+	var stdin = InputParams{
 		boolFlags: boolFlags,
 		intFlags:  intFlags,
 	}
@@ -56,13 +77,12 @@ func getInput() (Std, bool) {
 		f, err := os.Open(filename)
 		stdin.input = filename
 		if err != nil {
-			fmt.Println("error opening file: err:", err)
-			os.Exit(1)
+			panic(err)
 		}
 		defer func() {
 			err := f.Close()
 			if err != nil {
-				fmt.Printf("error with closing %s file: err:\n%s\n", filename, err)
+				log.Fatalf("Can`t close file.")
 			}
 		}()
 
@@ -91,7 +111,7 @@ func getInput() (Std, bool) {
 }
 
 func validate(s string, intFlags map[string]uint, boolFlags map[string]bool) (newStr string) {
-	arr := strings.Split(s, " ")
+	arr := strings.SplitN(s, " ", -1)
 	if val, ok := intFlags["f"]; ok && val >= uint(len(arr)) {
 		newStr = ""
 	} else {
@@ -109,15 +129,16 @@ func validate(s string, intFlags map[string]uint, boolFlags map[string]bool) (ne
 	return newStr
 }
 
-func preparing(s Std) []El {
-	arr := make([]El, 0)
-	el, prevValid := El{s.data[0], 1}, validate(s.data[0], s.intFlags, s.boolFlags)
+func preparing(s InputParams) []PreparedForOutput {
+	arr := make([]PreparedForOutput, 0)
+	el := PreparedForOutput{s.data[0], 1}
+	prevValid := validate(s.data[0], s.intFlags, s.boolFlags)
 	for i := 0; i < len(s.data)-1; i++ {
 		if prevValid == validate(s.data[i+1], s.intFlags, s.boolFlags) {
 			el.num++
 		} else {
 			arr = append(arr, el)
-			el = El{s.data[i+1], 1}
+			el = PreparedForOutput{s.data[i+1], 1}
 			prevValid = validate(s.data[i+1], s.intFlags, s.boolFlags)
 		}
 	}
@@ -125,27 +146,14 @@ func preparing(s Std) []El {
 	return append(arr, el)
 }
 
-func programBehaviour(boolFlags map[string]bool) func([]El) string {
-	f := unique
-	if ok, val := boolFlags["c"]; ok && val {
-		f = strWithNumOfRepeat
-	} else if ok, val = boolFlags["d"]; ok && val {
-		f = repeated
-	} else if ok, val = boolFlags["u"]; ok && val {
-		f = unrepeated
-	}
-
-	return f
-}
-
-func strWithNumOfRepeat(arr []El) (result string) {
+func strWithNumOfRepeat(arr []PreparedForOutput) (result string) {
 	for i := 0; i < len(arr); i++ {
 		result += strconv.Itoa(arr[i].num) + " " + arr[i].str + "\n"
 	}
 	return result
 }
 
-func repeated(arr []El) (result string) {
+func repeated(arr []PreparedForOutput) (result string) {
 	for i := 0; i < len(arr); i++ {
 		if arr[i].num > 1 {
 			result += arr[i].str + "\n"
@@ -154,7 +162,7 @@ func repeated(arr []El) (result string) {
 	return result
 }
 
-func unrepeated(arr []El) (result string) {
+func unrepeated(arr []PreparedForOutput) (result string) {
 	for i := 0; i < len(arr); i++ {
 		if arr[i].num == 1 {
 			result += arr[i].str + "\n"
@@ -163,15 +171,15 @@ func unrepeated(arr []El) (result string) {
 	return result
 }
 
-func unique(arr []El) (result string) {
+func unique(arr []PreparedForOutput) (result string) {
 	for i := 0; i < len(arr); i++ {
 		result += arr[i].str + "\n"
 	}
 	return result
 }
 
-func output(s Std, arr []El) (err error) {
-	f := programBehaviour(s.boolFlags)
+func output(s InputParams, arr []PreparedForOutput) (err error) {
+	f := s.defineProgramBehavior()
 	str := f(arr)
 	if s.output == "STDOUT" {
 		fmt.Printf(str)
@@ -210,9 +218,9 @@ func main() {
 	}
 
 	preparedToDisplay := preparing(stdParams)
+
 	err := output(stdParams, preparedToDisplay)
 	if err != nil {
 		fmt.Printf("error with writing result in file: err:\n%s", err)
 	}
-
 }
